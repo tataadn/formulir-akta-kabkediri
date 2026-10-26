@@ -3,7 +3,7 @@ const S = 12.21;
 const OPT = {
   bj: ['Laki-laki', 'Perempuan'],
   bjn: ['Tunggal', 'Kembar 2', 'Kembar 3', 'Kembar 4', 'Lainnya'],
-  bpn: ['Dokter', 'Bidan/Perawat'],
+  bpn: ['Dokter', 'Bidan/Perawat', 'Dukun', 'Lainnya'],
 };
 // [id, label, tipe, extra]  tipe: n=16 digit, d=tanggal, h=jam, k=angka, r=radio, x=otomatis
 const FORM = [
@@ -51,8 +51,6 @@ const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 const f = document.getElementById('f');
 const today = new Date();
-let sigData = ''; // tanda tangan (PNG data URL), kosong jika belum diisi
-const SIG = (x, y, w, h, k = 1) => (sigData ? `<img class="sig" src="${sigData}" alt="" style="left:${x * k}pt;top:${y * k}pt;width:${w * k}pt;height:${h * k}pt">` : '');
 
 // ---------- bentuk form (Bootstrap) ----------
 const fl = (id, label, ctl) => `<div class="form-floating">${ctl}<label for="${id}">${label}</label></div>`;
@@ -81,35 +79,8 @@ function fillDesa() {
 }
 fillDesa();
 kec.addEventListener('input', fillDesa);
+initBabies();
 initMembers();
-
-// ---------- kotak tanda tangan ----------
-f.insertAdjacentHTML('beforeend', `<div class="card mb-3"><div class="card-header"><span class="sec-no">${FORM.length + 2}</span><span class="fw-semibold">Tanda Tangan Pelapor / Kepala Keluarga</span><button type="button" class="btn btn-sm btn-outline-brand ms-auto" id="sigClear">Hapus</button></div><div class="card-body"><div class="sig-wrap" id="sigWrap"><canvas id="sigPad"></canvas><div class="sig-hint">Tanda tangan di sini (pakai jari atau mouse)</div></div><div class="form-text mt-2">Tanda tangan otomatis masuk ke semua formulir, tepat di atas nama lengkap pelapor.</div></div></div>`);
-(function sigPad() {
-  const cv = document.getElementById('sigPad'), ctx = cv.getContext('2d'), wrap = document.getElementById('sigWrap');
-  const dpr = Math.max(window.devicePixelRatio || 1, 2);
-  cv.width = cv.clientWidth * dpr; cv.height = cv.clientHeight * dpr;
-  ctx.lineWidth = 2.6 * dpr; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#111'; ctx.fillStyle = '#111';
-  let drawing = false, last = null;
-  const pos = (e) => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * cv.width / r.width, y: (e.clientY - r.top) * cv.height / r.height }; };
-  cv.addEventListener('pointerdown', (e) => { drawing = true; last = pos(e); cv.setPointerCapture(e.pointerId); ctx.beginPath(); ctx.arc(last.x, last.y, ctx.lineWidth / 2, 0, 7); ctx.fill(); });
-  cv.addEventListener('pointermove', (e) => { if (!drawing) return; const q = pos(e); ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(q.x, q.y); ctx.stroke(); last = q; });
-  const end = () => { if (drawing) { drawing = false; commit(); } };
-  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
-  function commit() { // potong area kosong supaya pas di kolom tanda tangan
-    const w = cv.width, h = cv.height, d = ctx.getImageData(0, 0, w, h).data;
-    let x0 = w, y0 = h, x1 = -1, y1 = -1;
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (d[(y * w + x) * 4 + 3] > 10) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
-    if (x1 < 0) sigData = '';
-    else {
-      const pd = 6, cw = x1 - x0 + 1 + pd * 2, ch = y1 - y0 + 1 + pd * 2, t = document.createElement('canvas');
-      t.width = cw; t.height = ch; t.getContext('2d').drawImage(cv, x0 - pd, y0 - pd, cw, ch, 0, 0, cw, ch);
-      sigData = t.toDataURL('image/png');
-    }
-    wrap.classList.toggle('has', !!sigData); render();
-  }
-  document.getElementById('sigClear').onclick = () => { ctx.clearRect(0, 0, cv.width, cv.height); commit(); };
-})();
 
 // ---------- olah nilai ----------
 const dp = (s) => (s ? s.split('-') : ['', '', '']);
@@ -129,8 +100,7 @@ function derive(v) {
 const P = (x, t, w, h) => `left:${x}pt;top:${t}pt;width:${w}pt;height:${h}pt;line-height:${h}pt`;
 
 // ---------- gambar formulir ----------
-function render() {
-  const v = Object.fromEntries(new FormData(f));
+function renderBaby(v, b) { // satu set formulir untuk anak ke-b (v = data bersama + data anak tsb)
   const d = derive(v);
   const tgl = `${today.getDate()} ${BULAN[today.getMonth()]} ${today.getFullYear()}`;
   let h = '<img src="assets/svg/form-bg.svg" alt="">';
@@ -143,16 +113,22 @@ function render() {
   }
   h += `<div class="cv" style="${P(413, 722.5, 124, 8.5)}">Kediri, ${tgl}</div>`;
   h += `<div class="cv" style="${P(425, 775.6, 100, 8.4)};font-weight:700">${d.pn ? '( ' + esc(d.pn) + ' )' : '(……………………………………………..)'}</div>`;
-  h += SIG(430, 741, 90, 34);
-  document.getElementById('paper').innerHTML = h;
-  render2(d, tgl);
-  render3(v);
+  paperEl(b, 1).innerHTML = h;
+  render2(d, tgl, b);
+  render3(v, b);
+}
+function render() {
+  const v = Object.fromEntries(new FormData(f));
+  syncBabies(v);
+  allBabies = babyList(v);
+  buildPreview(allBabies.length);
+  allBabies.forEach((bb, b) => renderBaby({ ...v, ...bb }, b));
 }
 
 // ---------- F-1.02 (asli ukuran Letter, diskalakan ke A4 supaya muat) ----------
 const K = 595.32 / 612;
 const P2 = (x, t, w, h, fs) => `left:${x * K}pt;top:${t * K}pt;width:${w * K}pt;height:${h * K}pt;line-height:${h * K}pt;font-size:${fs * K}pt`;
-function render2(d, tgl) {
+function render2(d, tgl, b) {
   let g = '<img src="assets/svg/form-bg-2.svg" alt="">';
   // I. Data pemohon = data pelapor (kepala keluarga / ayah bayi)
   [[d.pn, 94.5], [d.pk, 108.5], [d.pkk, 122.8]].forEach(([val, t]) => {
@@ -167,17 +143,38 @@ function render2(d, tgl) {
   // Tempat, tanggal, dan nama pemohon
   g += `<div class="cv" style="${P2(416, 654.8, 134, 9.2, 8.2)}">Kediri, ${tgl}</div>`;
   g += `<div class="cv" style="${P2(421, 710.4, 124, 9.4, 8.2)};font-weight:700">${d.pn ? '( ' + esc(d.pn) + ' )' : '(……………………………………………..)'}</div>`;
-  g += SIG(438, 673, 90, 36, K);
-  document.getElementById('paper2').innerHTML = g;
+  paperEl(b, 2).innerHTML = g;
 }
 
 // ---------- skala pratinjau ----------
+const paperEl = (b, p) => document.getElementById(`paper-b${b}-${p}`);
+let pvCount = 0, tabB = 0, tabP = 1;
+function buildPreview(n) { // satu set 5 halaman untuk setiap anak
+  if (n === pvCount) return;
+  const pv = document.getElementById('pv');
+  pv.innerHTML = Array.from({ length: n }, (_, b) => [1, 2, 3, 4, 5].map((p) =>
+    `<div class="stage off" data-b="${b}" data-p="${p}"><div class="wrap"><div class="paper pp${p}" id="paper-b${b}-${p}"></div></div></div>`).join('')).join('');
+  const st = [...pv.querySelectorAll('.stage')];
+  st.filter((x) => +x.dataset.p <= 2).pop().classList.add('last-p'); // halaman terakhir tiap pekerjaan cetak tanpa lembar kosong
+  st.filter((x) => +x.dataset.p >= 3).pop().classList.add('last-l');
+  pvCount = n; tabB = Math.min(tabB, n - 1);
+  const bt = document.getElementById('babyTabs');
+  bt.hidden = n < 2;
+  bt.innerHTML = Array.from({ length: n }, (_, b) => `<button type="button" class="nav-link" data-bb="${b}">Anak ${b + 1}</button>`).join('');
+  showTab(); fit();
+}
+function showTab() {
+  document.querySelectorAll('#pv .stage').forEach((x) => x.classList.toggle('off', !(+x.dataset.b === tabB && +x.dataset.p === tabP)));
+  document.querySelectorAll('#pvTabs .nav-link').forEach((x) => x.classList.toggle('active', +x.dataset.pv + 1 === tabP));
+  document.querySelectorAll('#babyTabs .nav-link').forEach((x) => x.classList.toggle('active', +x.dataset.bb === tabB));
+}
+// ---------- skala pratinjau ----------
 function fit() {
   const W = document.getElementById('pv').clientWidth;
-  [['wrap', 'stage', 793.76, 1122.56], ['wrap2', 'stage2', 793.76, 1027.2], ['wrap3', 'stage3', 1027.2, 793.8], ['wrap4', 'stage4', 1027.2, 793.8], ['wrap5', 'stage5', 1027.2, 793.8]].forEach(([w, st, pw, ph]) => {
-    const sc = Math.min(1, W / pw);
-    document.getElementById(w).style.transform = `scale(${sc})`;
-    document.getElementById(st).style.height = ph * sc + 'px';
+  document.querySelectorAll('#pv .stage').forEach((st) => {
+    const p = +st.dataset.p, sc = Math.min(1, W / (p >= 3 ? 1027.2 : 793.76));
+    st.firstElementChild.style.transform = `scale(${sc})`;
+    st.style.height = ({ 1: 1122.56, 2: 1027.2 }[p] || 793.8) * sc + 'px';
   });
 }
 
@@ -200,17 +197,21 @@ function cetakBerikut() {
   window.print();
 }
 // ---------- unduh PDF (semua halaman, termasuk tanda tangan) ----------
+const kapasitasOk = () => {
+  if (members.length + allBabies.length <= 10) return true;
+  alert('Anggota keluarga + bayi lebih dari 10 orang. Formulir F-1.01 hanya punya 10 baris, kurangi anggota keluarga.'); return false;
+};
 async function unduhPDF() {
-  if (!f.reportValidity()) return;
-  if (!sigData) { alert('Tanda tangan belum diisi. Silakan tanda tangan dulu di kotak Tanda Tangan.'); document.getElementById('sigPad').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+  if (!f.reportValidity() || !kapasitasOk()) return;
   const btn = document.getElementById('btnPdf'), label = btn.innerHTML;
-  btn.disabled = true; btn.textContent = 'Membuat PDF...';
+  btn.disabled = true;
   try {
     const { jsPDF } = window.jspdf, kk = 595.28 / 595.32;
-    const pages = [['paper', 'p'], ['paper2', 'p2'], ['paper3', 'l'], ['paper4', 'l'], ['paper5', 'l']];
+    const pages = allBabies.flatMap((_, b) => [1, 2, 3, 4, 5].map((p) => [`paper-b${b}-${p}`, p]));
     let doc;
     for (let i = 0; i < pages.length; i++) {
-      const [id, kind] = pages[i];
+      const [id, p] = pages[i];
+      btn.textContent = `Membuat PDF... (${i + 1}/${pages.length})`;
       const c = await html2canvas(document.getElementById(id), {
         scale: 3, backgroundColor: '#ffffff', logging: false,
         onclone: (d) => { // lepaskan dari pratinjau (skala/tab) supaya ukuran asli
@@ -219,12 +220,12 @@ async function unduhPDF() {
         },
       });
       if (i === 0) doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
-      else doc.addPage('a4', kind === 'l' ? 'landscape' : 'portrait');
-      if (kind === 'p') doc.addImage(c, 'PNG', 0, 0, 595.28, 841.89, undefined, 'FAST');
-      else if (kind === 'p2') doc.addImage(c, 'PNG', 0, 0, 595.28, 770.4 * kk, undefined, 'FAST');
+      else doc.addPage('a4', p >= 3 ? 'landscape' : 'portrait');
+      if (p === 1) doc.addImage(c, 'PNG', 0, 0, 595.28, 841.89, undefined, 'FAST');
+      else if (p === 2) doc.addImage(c, 'PNG', 0, 0, 595.28, 770.4 * kk, undefined, 'FAST');
       else doc.addImage(c, 'PNG', 35.7, 0, 770.4, 595.28, undefined, 'FAST');
     }
-    const nama = (f.elements.bn.value || 'bayi').trim().replace(/[^\w]+/g, '-');
+    const nama = allBabies.map((b) => (b.bn || 'bayi').trim().split(/\s+/)[0]).join('-').replace(/[^\w-]+/g, '-');
     doc.save(`Formulir-Akta-Kelahiran-${nama}.pdf`);
   } catch (err) {
     console.error(err);
@@ -232,14 +233,16 @@ async function unduhPDF() {
   } finally { btn.disabled = false; btn.innerHTML = label; }
 }
 document.getElementById('btnPdf').onclick = unduhPDF;
-document.getElementById('btnCetak').onclick = () => { if (f.reportValidity()) { antrian = ['p', 'l']; cetakBerikut(); } };
+document.getElementById('btnCetak').onclick = () => { if (f.reportValidity() && kapasitasOk()) { antrian = ['p', 'l']; cetakBerikut(); } };
 window.addEventListener('afterprint', () => { if (antrian.length) setTimeout(cetakBerikut, 300); else document.body.dataset.print = 'all'; });
-document.getElementById('btnReset').onclick = () => { if (confirm('Kosongkan semua isian?')) { f.reset(); fillDesa(); resetMembers(); document.getElementById('sigClear').click(); } };
+document.getElementById('btnReset').onclick = () => { if (confirm('Kosongkan semua isian?')) { f.reset(); fillDesa(); resetMembers(); resetBabies(); render(); } };
 document.getElementById('pvTabs').addEventListener('click', (e) => {
-  const b = e.target.closest('[data-pv]');
-  if (!b) return;
-  ['stage', 'stage2', 'stage3', 'stage4', 'stage5'].forEach((id, i) => document.getElementById(id).classList.toggle('off', i !== +b.dataset.pv));
-  document.querySelectorAll('#pvTabs .nav-link').forEach((x) => x.classList.toggle('active', x === b));
+  const x = e.target.closest('[data-pv]');
+  if (x) { tabP = +x.dataset.pv + 1; showTab(); }
+});
+document.getElementById('babyTabs').addEventListener('click', (e) => {
+  const x = e.target.closest('[data-bb]');
+  if (x) { tabB = +x.dataset.bb; showTab(); }
 });
 window.addEventListener('resize', fit);
-fit(); render();
+render(); fit();

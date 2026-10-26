@@ -12,11 +12,11 @@
   <div class="container-xxl">
     <div class="eyebrow">RS DKT Tk. IV Kediri</div>
     <h1>Pengajuan Akta Kelahiran</h1>
-    <p>Isi data sekali saja. Semua formulir Dukcapil terisi otomatis.</p>
+    <p>Isi data sekali saja. Semua formulir Dukcapil terisi otomatis, tinggal dicetak dan ditandatangani.</p>
     <div class="steps">
       <div class="step"><b>1</b>Isi data</div>
       <div class="step"><b>2</b>Periksa pratinjau</div>
-      <div class="step"><b>3</b>Tanda tangan &amp; unduh PDF</div>
+      <div class="step"><b>3</b>Unduh PDF &amp; tanda tangan</div>
     </div>
   </div>
 </header>
@@ -25,7 +25,7 @@
     <div class="col-lg-6 no">
       <form id="f" autocomplete="off"></form>
       <div class="actionbar">
-        <div class="hint">PDF berisi 5 halaman (F-2.01 A, F-1.02, dan F-1.01 hal 1-3) lengkap dengan tanda tangan. Tombol Cetak tetap ada: dialog muncul 2 kali (Portrait lalu Landscape).</div>
+        <div class="hint">PDF berisi 5 halaman (F-2.01 A, F-1.02, dan F-1.01 hal 1-3), tanda tangan dilakukan manual. Tombol Cetak tetap ada: dialog muncul 2 kali (Portrait lalu Landscape).</div>
         <button type="button" id="btnReset" class="btn btn-outline-secondary">Kosongkan</button>
         <button type="button" id="btnCetak" class="btn btn-outline-brand btn-lg px-3">Cetak</button>
         <button type="button" id="btnPdf" class="btn btn-brand btn-lg px-4">
@@ -39,6 +39,7 @@
             <div class="fw-semibold">Pratinjau langsung</div>
             <span class="badge rounded-pill" style="background:var(--brand-soft);color:var(--brand)">sama dengan formulir asli</span>
           </div>
+          <div class="nav pv-tabs mb-2 no" id="babyTabs" hidden></div>
           <ul class="nav pv-tabs mb-3 no" id="pvTabs">
             <li><button type="button" class="nav-link active" data-pv="0">F-2.01 A</button></li>
             <li><button type="button" class="nav-link" data-pv="1">F-1.02</button></li>
@@ -46,13 +47,7 @@
             <li><button type="button" class="nav-link" data-pv="3">F-1.01 hal 2</button></li>
             <li><button type="button" class="nav-link" data-pv="4">F-1.01 hal 3</button></li>
           </ul>
-          <div id="pv">
-            <div class="stage" id="stage"><div id="wrap"><div class="paper" id="paper"></div></div></div>
-            <div class="stage off" id="stage2"><div id="wrap2"><div class="paper" id="paper2" style="height:770.4pt"></div></div></div>
-            <div class="stage off" id="stage3"><div id="wrap3"><div class="paper" id="paper3" style="width:770.4pt;height:595.35pt"></div></div></div>
-            <div class="stage off" id="stage4"><div id="wrap4"><div class="paper" id="paper4" style="width:770.4pt;height:595.35pt"></div></div></div>
-            <div class="stage off" id="stage5"><div id="wrap5"><div class="paper" id="paper5" style="width:770.4pt;height:595.35pt"></div></div></div>
-          </div>
+          <div id="pv"></div>
         </div></div>
       </div>
     </div>
@@ -61,6 +56,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="assets/js/wilayah.js"></script>
+<script src="assets/js/kembar.js"></script>
 <script src="assets/js/keluarga.js"></script>
 <script src="assets/js/app.js"></script>
 </body>
