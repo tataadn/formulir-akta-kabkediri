@@ -178,8 +178,23 @@ function fit() {
   });
 }
 
+// ---------- sinkron pelapor = ayah bayi = kepala keluarga ----------
+// Isian yang sama otomatis tersalin dua arah, selama belum sengaja dibedakan
+const LINK = [['pn', 'an'], ['pk', 'ak'], ['pw', 'aw']], lastVal = {};
+const initLinked = () => LINK.flat().forEach((n) => { lastVal[n] = f.elements[n].value; });
+function syncLinked(t) {
+  LINK.forEach(([a, b]) => {
+    if (t.name !== a && t.name !== b) return;
+    const other = t.name === a ? b : a, dst = f.elements[other], before = lastVal[t.name];
+    if (dst.value === '' || dst.value === before) { dst.value = t.value; lastVal[other] = t.value; }
+    lastVal[t.name] = t.value;
+  });
+}
+initLinked();
+
 // ---------- event ----------
-f.addEventListener('input', () => {
+f.addEventListener('input', (e) => {
+  syncLinked(e.target);
   const pn = f.elements.pn;
   pn.setCustomValidity(singkat(pn.value) ? 'Nama tidak boleh disingkat, tulis lengkap.' : '');
   pn.classList.toggle('is-invalid', !!pn.validationMessage && pn.value !== '');
@@ -235,7 +250,7 @@ async function unduhPDF() {
 document.getElementById('btnPdf').onclick = unduhPDF;
 document.getElementById('btnCetak').onclick = () => { if (f.reportValidity() && kapasitasOk()) { antrian = ['p', 'l']; cetakBerikut(); } };
 window.addEventListener('afterprint', () => { if (antrian.length) setTimeout(cetakBerikut, 300); else document.body.dataset.print = 'all'; });
-document.getElementById('btnReset').onclick = () => { if (confirm('Kosongkan semua isian?')) { f.reset(); fillDesa(); resetMembers(); resetBabies(); render(); } };
+document.getElementById('btnReset').onclick = () => { if (confirm('Kosongkan semua isian?')) { f.reset(); initLinked(); fillDesa(); resetMembers(); resetBabies(); render(); } };
 document.getElementById('pvTabs').addEventListener('click', (e) => {
   const x = e.target.closest('[data-pv]');
   if (x) { tabP = +x.dataset.pv + 1; showTab(); }
