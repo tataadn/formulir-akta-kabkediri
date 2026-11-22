@@ -8,9 +8,9 @@ const OPT = {
 // [id, label, tipe, extra]  tipe: n=16 digit, d=tanggal, h=jam, k=angka, r=radio, x=otomatis
 const FORM = [
   ['Wilayah', [['prov', 'Provinsi', 'x', 'Jawa Timur (otomatis)'], ['kab', 'Kabupaten/Kota', 'x', 'Kabupaten Kediri (otomatis)'], ['kec', 'Kecamatan', 's'], ['desa', 'Desa/Kelurahan', 'sd'], ['kw', 'Kode Wilayah']]],
-  ['Data Pelapor', [['pn', 'Nama lengkap (tanpa singkatan)'], ['pk', 'NIK', 'n'], ['pkk', 'Nomor Kartu Keluarga', 'n'], ['pw', 'Kewarganegaraan', 't', 'WNI']]],
+  ['Data Pelapor', [['pn', 'Nama lengkap (sesuai KTP/KK)'], ['pk', 'NIK', 'n'], ['pkk', 'Nomor Kartu Keluarga', 'n'], ['pw', 'Kewarganegaraan', 't', 'WNI']]],
   ['Data Kepala Keluarga (F-1.01)', [['alamat', 'Alamat'], ['rt', 'RT', 'q'], ['rw', 'RW', 'q'], ['kp', 'Kode pos', 'p'], ['telp', 'Telepon / HP', 'm'], ['email', 'E-mail', 'e'], ['dusun', 'Nama dusun/dukuh/kampung', 'o'], ['akta', 'Nomor Akta Perkawinan (opsional)', 'o']]],
-  ['Data Ayah', [['an', 'Nama Ayah'], ['ak', 'NIK Ayah', 'n'], ['at', 'Tempat Lahir Ayah'], ['ad', 'Tanggal Lahir Ayah', 'd'], ['aw', 'Kewarganegaraan', 't', 'WNI']]],
+  ['Data Ayah', [['an', 'Nama Ayah (sesuai KTP/KK)'], ['ak', 'NIK Ayah', 'n'], ['at', 'Tempat Lahir Ayah'], ['ad', 'Tanggal Lahir Ayah', 'd'], ['aw', 'Kewarganegaraan', 't', 'WNI']]],
   ['Data Ibu', [['in', 'Nama Ibu'], ['ik', 'NIK Ibu', 'n'], ['it', 'Tempat Lahir Ibu'], ['id', 'Tanggal Lahir Ibu', 'd'], ['iw', 'Kewarganegaraan', 't', 'WNI']]],
   ['Data Saksi I', [['s1n', 'Nama Saksi I'], ['s1k', 'NIK Saksi I', 'n'], ['s1w', 'Kewarganegaraan', 't', 'WNI']]],
   ['Data Saksi II', [['s2n', 'Nama Saksi II'], ['s2k', 'NIK Saksi II', 'n'], ['s2w', 'Kewarganegaraan', 't', 'WNI']]],
@@ -196,7 +196,10 @@ initLinked();
 f.addEventListener('input', (e) => {
   syncLinked(e.target);
   const pn = f.elements.pn;
-  pn.setCustomValidity(singkat(pn.value) ? 'Nama tidak boleh disingkat, tulis lengkap.' : '');
+  // Nama ayah (dan pelapor yang sama dengan ayah) boleh disingkat asal sesuai KTP/KK.
+  // Pelapor yang bukan ayah tetap harus menulis nama lengkap.
+  const samaAyah = pn.value.trim().toUpperCase() === f.elements.an.value.trim().toUpperCase();
+  pn.setCustomValidity(singkat(pn.value) && !samaAyah ? 'Nama pelapor tidak boleh disingkat, kecuali sama dengan nama ayah (sesuai KTP/KK).' : '');
   pn.classList.toggle('is-invalid', !!pn.validationMessage && pn.value !== '');
   pn.closest('.col-md-6').querySelector('.invalid-feedback').textContent = pn.validationMessage;
   render();
